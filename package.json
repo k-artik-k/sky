@@ -3,10 +3,16 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:exe": "node scripts/build-exe.cjs",
+    "wallpaper": "npm run build && electron .",
+    "wallpaper:dev": "electron . --dev",
+    "wallpaper:compile-helper": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize /target:exe /out:electron\\wallpaper-helper.exe electron\\WallpaperHelper.cs",
+    "start": "npm run build:exe"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -16,6 +22,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }

@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import HandBox from "./HandBox";
 import { toast } from "./toastManager";
 
+export interface Alias {
+  key: string;
+  url: string;
+}
+
 export interface SkySettings {
   clouds: boolean;
   birds: boolean;
@@ -11,6 +16,7 @@ export interface SkySettings {
   showClock: boolean;
   customHour: number | null; // null = use system clock
   autoHideHud: boolean;
+  aliases: Alias[];
 }
 
 export const DEFAULT_SKY_SETTINGS: SkySettings = {
@@ -22,6 +28,7 @@ export const DEFAULT_SKY_SETTINGS: SkySettings = {
   showClock: true,
   customHour: null,
   autoHideHud: true,
+  aliases: [],
 };
 
 const STORAGE_KEY = "sky_engine_settings";
@@ -97,12 +104,37 @@ export default function AppearancePanel({
   onClose,
 }: AppearancePanelProps) {
   const [form, setForm] = useState<SkySettings>(settings);
+  const [newAliasKey, setNewAliasKey] = useState("");
+  const [newAliasUrl, setNewAliasUrl] = useState("");
 
   // Live preview as user tweaks values
   const update = <K extends keyof SkySettings>(key: K, val: SkySettings[K]) => {
     const next = { ...form, [key]: val };
     setForm(next);
     onChange(next);
+  };
+
+  const addAlias = () => {
+    const key = newAliasKey.trim().toLowerCase();
+    let url = newAliasUrl.trim();
+    if (!key || !url) return;
+
+    // Auto-add https:// if missing
+    if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+
+    // Replace if same key exists
+    const aliases = [...(form.aliases || []).filter((a) => a.key !== key), { key, url }];
+    update("aliases", aliases);
+    saveSettings({ ...form, aliases });
+    setNewAliasKey("");
+    setNewAliasUrl("");
+    toast(`Alias "${key}" saved`);
+  };
+
+  const removeAlias = (key: string) => {
+    const aliases = (form.aliases || []).filter((a) => a.key !== key);
+    update("aliases", aliases);
+    saveSettings({ ...form, aliases });
   };
 
   const handleSave = () => {
@@ -236,6 +268,57 @@ export default function AppearancePanel({
               <span className="time-readout">{formatHour(form.customHour)}</span>
             </div>
           )}
+        </div>
+
+        {/* Spotlight Aliases */}
+        <div className="slider-section">
+          <span className="field-label">Spotlight Aliases</span>
+          <p className="settings-subtitle" style={{ marginBottom: "10px" }}>
+            Type an alias in the search bar to open its URL.
+          </p>
+
+          {(form.aliases || []).length > 0 && (
+            <ul className="alias-list">
+              {form.aliases.map((a) => (
+                <li key={a.key} className="alias-row">
+                  <span className="alias-key">{a.key}</span>
+                  <span className="alias-arrow">→</span>
+                  <span className="alias-url" title={a.url}>{a.url.replace(/^https?:\/\//, "")}</span>
+                  <button
+                    className="alias-del"
+                    onClick={() => removeAlias(a.key)}
+                    title="Remove alias"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="alias-add-row">
+            <input
+              type="text"
+              className="alias-input alias-input-key"
+              placeholder="alias"
+              value={newAliasKey}
+              onChange={(e) => setNewAliasKey(e.target.value.replace(/\s/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && addAlias()}
+            />
+            <span className="alias-arrow">→</span>
+            <input
+              type="text"
+              className="alias-input alias-input-url"
+              placeholder="url (e.g. youtube.com)"
+              value={newAliasUrl}
+              onChange={(e) => setNewAliasUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addAlias()}
+            />
+            <button className="btn sm" onClick={addAlias} style={{ marginLeft: "6px" }}>
+              Add
+              <HandBox seed="addalias" />
+            </button>
+          </div>
         </div>
 
         {/* Save & Reset buttons */}

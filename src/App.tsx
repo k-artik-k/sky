@@ -6,24 +6,14 @@ import AppearancePanel, {
   saveSettings,
   SkySettings,
 } from "./AppearancePanel";
+import Spotlight from "./Spotlight";
 import { toast } from "./toastManager";
-
-const KONAMI = [
-  "ArrowUp",
-  "ArrowUp",
-  "ArrowDown",
-  "ArrowDown",
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowLeft",
-  "ArrowRight",
-  "b",
-  "a",
-];
 
 export default function App() {
   const [settings, setSettings] = useState<SkySettings>(() => loadSettings());
   const [openSettings, setOpenSettings] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [spotlightInitChar, setSpotlightInitChar] = useState("");
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [touchActive, setTouchActive] = useState(false);
@@ -43,7 +33,7 @@ export default function App() {
       const active = Boolean(document.fullscreenElement);
       setIsFullscreen(active);
       if (active && !wasFullscreen) {
-        toast("Fullscreen Wallpaper Mode (Press F or Esc to exit)");
+        toast("Fullscreen Wallpaper Mode");
       } else if (!active && wasFullscreen) {
         toast("Exited Fullscreen");
       }
@@ -58,6 +48,31 @@ export default function App() {
     return () => {
       if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
     };
+  }, []);
+
+  // Listen for Electron Live Wallpaper system tray & global hotkeys
+  useEffect(() => {
+    const api = window.electronWallpaper;
+    if (!api) return;
+
+    api.onOpenSettings(() => {
+      setSpotlightOpen(false);
+      setOpenSettings(true);
+    });
+
+    api.onToggleClock(() => {
+      setSettings((prev) => {
+        const next = { ...prev, showClock: !prev.showClock };
+        saveSettings(next);
+        return next;
+      });
+    });
+
+    api.onOpenSpotlight(() => {
+      setOpenSettings(false);
+      setSpotlightInitChar("");
+      setSpotlightOpen(true);
+    });
   }, []);
 
   const toggleFullscreen = () => {
@@ -83,51 +98,42 @@ export default function App() {
     saveSettings(newSettings);
   };
 
-  // Keyboard shortcuts (F for fullscreen, H for hud toggle, Konami, time timelapse)
+  // Keyboard shortcut & typing listener for Spotlight & Easter eggs
   useEffect(() => {
-    let buf: string[] = [];
-
     const onKey = (e: KeyboardEvent) => {
-      // Don't trigger when typing in inputs/dialogs or holding meta keys
+      // Don't trigger if already typing in an input, textarea, or dialog
       if (
-        (e.target as HTMLElement)?.closest?.("input, textarea, select, [role=dialog]") ||
-        e.ctrlKey ||
-        e.metaKey ||
-        e.altKey
+        (e.target as HTMLElement)?.closest?.("input, textarea, select, [role=dialog], .spotlight-container")
       ) {
         return;
       }
 
-      // Universal F key for Fullscreen Wallpaper Mode
-      if (e.key === "f" || e.key === "F") {
+      // Ctrl+K or Cmd+K opens Spotlight empty
+      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
-        toggleFullscreen();
+        setSpotlightInitChar("");
+        setSpotlightOpen(true);
         return;
       }
 
-      // H key to toggle HUD auto-hide
-      if (e.key === "h" || e.key === "H") {
-        e.preventDefault();
-        const next = !settings.autoHideHud;
-        handleSettingsChange({ ...settings, autoHideHud: next });
-        toast(next ? "Hover-only mode enabled" : "Buttons set to always visible");
+      // Ignore other modifier combos
+      if (e.ctrlKey || e.metaKey || e.altKey) {
         return;
       }
 
-      // Easter eggs keyboard sequence
-      if (!settings.easterEggs) return;
+      // Slash opens Spotlight empty
+      if (e.key === "/") {
+        e.preventDefault();
+        setSpotlightInitChar("");
+        setSpotlightOpen(true);
+        return;
+      }
 
-      buf = [...buf, e.key.length === 1 ? e.key.toLowerCase() : e.key].slice(-12);
-      const tail = buf.join("");
-
-      if (buf.slice(-KONAMI.length).join() === KONAMI.join()) {
-        buf = [];
-        window.dispatchEvent(new Event("archive:meteors"));
-        toast("Meteor shower unlocked.");
-      } else if (tail.endsWith("time")) {
-        buf = [];
-        window.dispatchEvent(new Event("archive:timelapse"));
-        toast("Time machine: one whole day in 20 seconds.");
+      // Any printable single character opens Spotlight with that character pre-filled
+      if (!spotlightOpen && !openSettings && e.key.length === 1) {
+        e.preventDefault();
+        setSpotlightInitChar(e.key === " " ? "" : e.key);
+        setSpotlightOpen(true);
       }
     };
 
@@ -135,7 +141,7 @@ export default function App() {
       if (!settings.easterEggs) return;
       if (
         (e.target as HTMLElement)?.closest?.(
-          "button, input, textarea, select, [role=dialog], .settings-card, .sky-hud"
+          "button, input, textarea, select, [role=dialog], .settings-card, .sky-hud, .spotlight-container"
         )
       ) {
         return;
@@ -151,7 +157,7 @@ export default function App() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("dblclick", onDblClick);
     };
-  }, [settings]);
+  }, [settings, spotlightOpen, openSettings]);
 
   // Clock formatters
   const hours = time.getHours();
@@ -177,7 +183,7 @@ export default function App() {
         hour={settings.customHour}
       />
 
-      {/* Floating Navigation HUD - Only reveals when hovering over this options area */}
+      {/* Floating Navigation HUD - Only reveals when hovering over top-right corner */}
       <nav
         className={`sky-hud ${!settings.autoHideHud ? "always-visible" : ""} ${
           touchActive ? "is-active" : ""
@@ -187,8 +193,23 @@ export default function App() {
       >
         <button
           className="hud-btn"
+          onClick={() => {
+            setSpotlightInitChar("");
+            setSpotlightOpen(true);
+          }}
+          title="Command Search (Press any key or Ctrl+K)"
+          aria-label="Open Command Search"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
+
+        <button
+          className="hud-btn"
           onClick={toggleFullscreen}
-          title={isFullscreen ? "Exit Fullscreen (F)" : "Fullscreen Wallpaper Mode (F)"}
+          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Wallpaper Mode"}
           aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Wallpaper Mode"}
         >
           {isFullscreen ? (
@@ -215,7 +236,7 @@ export default function App() {
         </button>
       </nav>
 
-      {/* Clean Minimalist Center Clock (for New Tab / Wallpaper) */}
+      {/* Clean Minimalist Center Clock */}
       {settings.showClock && (
         <main className="center-clock">
           <div className="clock-time">
@@ -226,6 +247,20 @@ export default function App() {
           </div>
           <div className="clock-date">{dateStr}</div>
         </main>
+      )}
+
+      {/* Liquid Glass Spotlight Command Bar */}
+      {spotlightOpen && (
+        <Spotlight
+          settings={settings}
+          onChange={handleSettingsChange}
+          onClose={() => setSpotlightOpen(false)}
+          onOpenAppearance={() => {
+            setSpotlightOpen(false);
+            setOpenSettings(true);
+          }}
+          initialChar={spotlightInitChar}
+        />
       )}
 
       {/* Appearance & Customization Dialog */}

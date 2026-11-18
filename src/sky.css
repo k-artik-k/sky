@@ -732,3 +732,241 @@ html, body {
   padding-top: 14px;
   border-top: 2px solid color-mix(in srgb, var(--outline) 25%, transparent);
 }
+
+/* ---- Liquid Glass Spotlight Command Bar ---- */
+
+.spotlight-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: clamp(14vh, 20vh, 220px);
+  background: rgba(10, 25, 45, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: spotOverlayFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spotlight-container {
+  width: min(600px, 92vw);
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(50px) saturate(2);
+  -webkit-backdrop-filter: blur(50px) saturate(2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(10, 25, 45, 0.2),
+              0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+              0 2px 4px rgba(255, 255, 255, 0.35) inset;
+  overflow: hidden;
+  animation: spotContainerIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+[data-theme="night"] .spotlight-container {
+  background: rgba(18, 30, 58, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+              0 1px 2px rgba(255, 255, 255, 0.15) inset;
+}
+
+.spotlight-input-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  gap: 14px;
+}
+
+.spotlight-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--ink);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.spotlight-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font: 500 1.25rem var(--body);
+  color: var(--ink);
+}
+
+.spotlight-input::placeholder {
+  color: var(--ink);
+  opacity: 0.45;
+}
+
+.spotlight-clear {
+  border: none;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  cursor: pointer;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.spotlight-clear:hover {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+[data-theme="night"] .spotlight-clear {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="night"] .spotlight-clear:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.spotlight-badge {
+  font: 700 0.72rem var(--body);
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: var(--ink);
+  opacity: 0.85;
+  user-select: none;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.spotlight-badge:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="night"] .spotlight-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.spotlight-message {
+  padding: 12px 20px;
+  font: 600 0.95rem var(--body);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.spotlight-calc {
+  padding: 10px 20px;
+  font: 600 1.1rem "Consolas", monospace, var(--body);
+  color: var(--ink);
+  opacity: 0.85;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="night"] .spotlight-calc {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Alias Management (Settings Panel) ---- */
+
+.alias-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.alias-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--outline) 15%, transparent);
+}
+
+.alias-key {
+  font: 700 0.95rem "Consolas", monospace, var(--body);
+  color: var(--marker-hot);
+  min-width: 60px;
+}
+
+.alias-arrow {
+  color: var(--ink-soft);
+  opacity: 0.5;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.alias-url {
+  flex: 1;
+  font: 400 0.88rem var(--body);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alias-del {
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.alias-del:hover {
+  opacity: 1;
+}
+
+.alias-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alias-input {
+  border: 2px solid color-mix(in srgb, var(--outline) 30%, transparent);
+  background: color-mix(in srgb, var(--card-bg) 60%, transparent);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font: 500 0.9rem var(--body);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.alias-input:focus {
+  border-color: var(--marker-hot);
+}
+
+.alias-input-key {
+  width: 80px;
+  font-family: "Consolas", monospace, var(--body);
+}
+
+.alias-input-url {
+  flex: 1;
+  min-width: 0;
+}
+
+@keyframes spotOverlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spotContainerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
