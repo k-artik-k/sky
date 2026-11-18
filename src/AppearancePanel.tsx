@@ -28,7 +28,12 @@ export const DEFAULT_SKY_SETTINGS: SkySettings = {
   showClock: true,
   customHour: null,
   autoHideHud: true,
-  aliases: [],
+  aliases: [
+    { key: "yt", url: "https://www.youtube.com" },
+    { key: "gh", url: "https://github.com" },
+    { key: "mail", url: "https://mail.google.com" },
+    { key: "cal", url: "https://calendar.google.com" },
+  ],
 };
 
 const STORAGE_KEY = "sky_engine_settings";

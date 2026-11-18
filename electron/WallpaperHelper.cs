@@ -34,7 +34,9 @@ public class WallpaperHelper
     const int WS_CHILD = 0x40000000;
     const int WS_POPUP = unchecked((int)0x80000000);
     const int WS_VISIBLE = 0x10000000;
+    const int WS_CLIPSIBLINGS = 0x04000000;
     const int WS_EX_TOOLWINDOW = 0x00000080;
+    const int WS_EX_NOACTIVATE = 0x08000000;
     const uint SWP_NOZORDER = 0x0004;
     const uint SWP_NOACTIVATE = 0x0010;
     const uint SWP_SHOWWINDOW = 0x0040;
@@ -112,13 +114,13 @@ public class WallpaperHelper
                 return 1;
             }
 
-            // CRUCIAL: Remove WS_POPUP and add WS_CHILD & WS_VISIBLE so Windows message pump doesn't deadlock
+            // CRUCIAL: Remove WS_POPUP and add WS_CHILD, WS_VISIBLE, and WS_CLIPSIBLINGS so Windows message pump doesn't deadlock
             int style = GetWindowLong(childHwnd, GWL_STYLE);
-            style = (style & ~WS_POPUP) | WS_CHILD | WS_VISIBLE;
+            style = (style & ~WS_POPUP) | WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS;
             SetWindowLong(childHwnd, GWL_STYLE, style);
 
             int exStyle = GetWindowLong(childHwnd, GWL_EXSTYLE);
-            exStyle |= WS_EX_TOOLWINDOW;
+            exStyle |= WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
             SetWindowLong(childHwnd, GWL_EXSTYLE, exStyle);
 
             SetParent(childHwnd, workerW);

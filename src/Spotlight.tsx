@@ -17,11 +17,9 @@ function tryCalc(expr: string): string | null {
   // Must have at least one operator to be a "calculation"
   if (!/[+\-*/^%]/.test(expr)) return null;
   try {
-    // Replace ^ with ** for exponentiation
     const sanitized = expr.replace(/\^/g, "**");
     const result = new Function(`"use strict"; return (${sanitized});`)();
     if (typeof result !== "number" || !isFinite(result)) return null;
-    // Format nicely
     return Number.isInteger(result) ? String(result) : result.toFixed(6).replace(/\.?0+$/, "");
   } catch {
     return null;
@@ -38,20 +36,40 @@ export default function Spotlight({
   const [query, setQuery] = useState(initialChar);
   const [calcResult, setCalcResult] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const skipNextInput = useRef(!!initialChar);
 
-  // Auto-focus input on mount
+  // Auto-focus input on mount and place cursor at end
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.setSelectionRange(query.length, query.length);
-    }
+    const timer = setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const len = inputRef.current.value.length;
+        inputRef.current.setSelectionRange(len, len);
+      }
+    }, 15);
+    return () => clearTimeout(timer);
   }, []);
 
   // Live calculator preview
   useEffect(() => {
     setCalcResult(tryCalc(query.trim()));
   }, [query]);
+
+  const openLink = (url: string) => {
+    setQuery("");
+    onClose();
+    // 1. Electron Wallpaper Mode: delegate to system default browser
+    if (window.electronWallpaper?.openExternal) {
+      window.electronWallpaper.openExternal(url);
+      return;
+    }
+    // 2. Chrome Extension New Tab: navigate the current tab
+    if (window.location.protocol === "chrome-extension:") {
+      window.location.href = url;
+      return;
+    }
+    // 3. Live Wallpaper / WebView2 / Web Preview: open in external/new tab without replacing the sky
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
   const execute = () => {
     const raw = query.trim();
@@ -60,9 +78,11 @@ export default function Spotlight({
     const clean = raw.replace(/^\//, "").trim();
     const parts = clean.split(/\s+/);
     const cmd = parts[0].toLowerCase();
+    const rest = parts.slice(1).join(" ").trim();
 
-    // Built-in: settings / appearance
+    // Built-in: settings / appearance / prefs
     if (cmd === "settings" || cmd === "appearance" || cmd === "prefs") {
+      setQuery("");
       onClose();
       onOpenAppearance();
       return;
@@ -70,6 +90,7 @@ export default function Spotlight({
 
     // Built-in: fullscreen
     if (cmd === "fs" || cmd === "fullscreen") {
+      setQuery("");
       onClose();
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {
@@ -83,6 +104,7 @@ export default function Spotlight({
 
     // Built-in: reset
     if (cmd === "reset") {
+      setQuery("");
       onChange({
         clouds: true,
         birds: true,
@@ -99,35 +121,92 @@ export default function Spotlight({
       return;
     }
 
-    // Calculator — if it evaluates, copy to clipboard and show toast
+    // Built-in: Clear
+    if (cmd === "clear") {
+      setQuery("");
+      return;
+    }
+
+    // Calculator — if it evaluates, copy to clipboard and notify
     const calc = tryCalc(clean);
     if (calc !== null) {
+      setQuery("");
       navigator.clipboard?.writeText(calc).catch(() => {});
       toast(`= ${calc}`);
       onClose();
       return;
     }
 
-    const openLink = (url: string) => {
-      setQuery("");
-      onClose();
-      if (window.electronWallpaper?.openExternal) {
-        window.electronWallpaper.openExternal(url);
-      } else {
-        window.location.href = url;
-      }
-    };
-
-    // Custom aliases check (exact match on first word)
-    const alias = settings.aliases?.find(
-      (a) => a.key.toLowerCase() === cmd
-    );
+    // 1. Check custom user-defined aliases first
+    const alias = settings.aliases?.find((a) => a.key.toLowerCase() === cmd);
     if (alias) {
-      openLink(alias.url);
+      let targetUrl = alias.url;
+      if (rest) {
+        if (targetUrl.includes("%s")) {
+          targetUrl = targetUrl.replace(/%s/g, encodeURIComponent(rest));
+        } else if (!targetUrl.includes("?")) {
+          targetUrl += `?q=${encodeURIComponent(rest)}`;
+        } else {
+          targetUrl += `&q=${encodeURIComponent(rest)}`;
+        }
+      }
+      openLink(targetUrl);
       return;
     }
 
-    // Direct URL detection
+    // 2. Built-in YouTube Search & Launch
+    if (cmd === "yt" || cmd === "youtube") {
+      if (rest) {
+        openLink(`https://www.youtube.com/results?search_query=${encodeURIComponent(rest)}`);
+      } else {
+        openLink("https://www.youtube.com");
+      }
+      return;
+    }
+
+    // 3. Built-in Google Search & Launch (supports "g <query>" and "g: <query>")
+    if (cmd === "g" || cmd === "google" || cmd === "g:") {
+      const gQuery = cmd === "g:" ? rest : rest;
+      if (gQuery) {
+        openLink(`https://www.google.com/search?q=${encodeURIComponent(gQuery)}`);
+      } else {
+        openLink("https://www.google.com");
+      }
+      return;
+    }
+
+    // 4. Built-in ChatGPT
+    if (cmd === "gpt" || cmd === "chatgpt") {
+      if (rest) {
+        openLink(`https://chatgpt.com/?q=${encodeURIComponent(rest)}`);
+      } else {
+        openLink("https://chatgpt.com");
+      }
+      return;
+    }
+
+    // 5. Built-in Claude AI
+    if (cmd === "claude") {
+      if (rest) {
+        openLink(`https://claude.ai/new?q=${encodeURIComponent(rest)}`);
+      } else {
+        openLink("https://claude.ai");
+      }
+      return;
+    }
+
+    // 6. Built-in Reddit
+    if (cmd === "rd" || cmd === "reddit") {
+      if (rest) {
+        const sub = rest.replace(/^r\//i, "");
+        openLink(`https://www.reddit.com/r/${encodeURIComponent(sub)}`);
+      } else {
+        openLink("https://www.reddit.com");
+      }
+      return;
+    }
+
+    // 7. Direct URL detection (e.g. "github.com", "https://news.ycombinator.com")
     if (
       /^https?:\/\//i.test(clean) ||
       (/^[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(clean) && !clean.includes(" "))
@@ -136,13 +215,14 @@ export default function Spotlight({
       return;
     }
 
-    // Fallback: Google Search
+    // 8. General fallback: Google Search
     openLink(`https://www.google.com/search?q=${encodeURIComponent(raw)}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
+      setQuery("");
       onClose();
       return;
     }
@@ -156,7 +236,10 @@ export default function Spotlight({
     <div
       className="spotlight-overlay"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) {
+          setQuery("");
+          onClose();
+        }
       }}
     >
       <div className="spotlight-container">
@@ -178,21 +261,9 @@ export default function Spotlight({
             ref={inputRef}
             type="text"
             className="spotlight-input"
-            placeholder="Search or type a command..."
+            placeholder="Search or type a command (yt, g, gpt, settings, fs)..."
             value={query}
-            onChange={(e) => {
-              // Skip the first input event if we pre-filled from initialChar
-              // (browser fires input from the same keydown that opened us)
-              if (skipNextInput.current) {
-                skipNextInput.current = false;
-                // If the value doubled (e.g. "gg" when we wanted "g"), fix it
-                if (initialChar && e.target.value === initialChar + initialChar) {
-                  setQuery(initialChar);
-                  return;
-                }
-              }
-              setQuery(e.target.value);
-            }}
+            onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             spellCheck={false}
             autoComplete="off"
@@ -214,7 +285,15 @@ export default function Spotlight({
             </button>
           )}
 
-          <div className="spotlight-badge" onClick={onClose}>ESC</div>
+          <div
+            className="spotlight-badge"
+            onClick={() => {
+              setQuery("");
+              onClose();
+            }}
+          >
+            ESC
+          </div>
         </div>
 
         {/* Live calculator result preview */}

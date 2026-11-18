@@ -13,6 +13,10 @@ const path = require("path");
 const fs = require("fs");
 const { execFile } = require("child_process");
 
+// Disable DirectComposition and GPU compositing swapchain deadlocks when parenting to Windows 11 WorkerW
+app.commandLine.appendSwitch("disable-gpu-compositing");
+app.commandLine.appendSwitch("disable-direct-composition");
+
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {

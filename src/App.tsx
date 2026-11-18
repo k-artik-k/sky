@@ -254,9 +254,13 @@ export default function App() {
         <Spotlight
           settings={settings}
           onChange={handleSettingsChange}
-          onClose={() => setSpotlightOpen(false)}
+          onClose={() => {
+            setSpotlightOpen(false);
+            setSpotlightInitChar("");
+          }}
           onOpenAppearance={() => {
             setSpotlightOpen(false);
+            setSpotlightInitChar("");
             setOpenSettings(true);
           }}
           initialChar={spotlightInitChar}
